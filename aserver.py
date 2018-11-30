@@ -28,6 +28,11 @@ class Server:
                 with open("User.CSR.pem",'wb') as f:
                     f.write(OpenSSL.crypto.dump_certificate_request(crypto.FILETYPE_PEM, certreq))
                 
+                signReqCA('IntermediateAuthority','User.CSR.pem','heslo', csr_type = 'usr')
+                with open('USER.cert.pem') as cert:
+                    text=cert.read()
+                    c.send(b'\x66'+text.encode())
+                    #c.send(b'\x66'+OpenSSL.crypto.dump_certificate(crypto.FILETYPE_PEM,cert.read()))
                 #c.send(b'\x20'+podepsany)
                 print(Utils.verify_chain("IntermediateAuthority/certs/IntermediateAuthority.chain.pem",open('USER.cert.pem','rb').read()))
                 if(Utils.verify_chain("IntermediateAuthority/certs/IntermediateAuthority.chain.pem",open('USER.cert.pem','rb').read())):
@@ -44,7 +49,8 @@ class Server:
                         connection.send(data)
                 if not data:
                     self.connections.remove(c)
-                    self.authenticated.remove(c)
+                    if (c in self.authenticated):
+                        self.authenticated.remove(c)
                     c.close()
                     break
 

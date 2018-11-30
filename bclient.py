@@ -56,6 +56,11 @@ class Client:
             if not data:
                 #ukonceni komunikace
                 break
+            elif data[0:1]==b"\x66":
+                with open('client1.cert.pem','wb') as cert:
+                    cert.write(data[1:])
+                self.nastavitCert(data[1:])
+                #self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,data[1:])
             elif data[0:1]==b"\x11":
                 #kdyz prijde ridici znak x11-posleme na vyzadani klic
                 self.poslatKlic()
@@ -81,19 +86,21 @@ class Client:
         self.sock.send(b'\x65')
     def nastavitCert(self,data):
         #self.cert=OpenSSL.crypto.load_certificate_request(crypto.FILETYPE_PEM, data)
-        self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_ASN1,data)
+        self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,data)
     def poslatCert(self):
         text=OpenSSL.crypto.dump_certificate(crypto.FILETYPE_PEM,self.cert)
         self.sock.send(b'\x33'+text)
     def poslatCertReq(self):
-        #posle certifikat na podepsani
-        cert = open('User.CSR.pem')
-        certificate = OpenSSL.crypto.load_certificate_request(crypto.FILETYPE_PEM, open('User.CSR.pem').read())
-        certext = OpenSSL.crypto.dump_certificate_request(crypto.FILETYPE_PEM, certificate)
-        print(certext)
+        #posle certifikat na podepsani¨
+        with open('User.CSR.pem') as cert:
+            certificate = OpenSSL.crypto.load_certificate_request(crypto.FILETYPE_PEM, cert.read())
+            certext = OpenSSL.crypto.dump_certificate_request(crypto.FILETYPE_PEM, certificate)
+            print(certext)
+            self.sock.send(b'\x15'+certext)
+      
         
-        self.sock.send(b'\x15'+certext)
-        cert.close()
+        
+        
     def poslatKlic(self):
         #posle ridici znak nasledovany klicem
         self.sock.send(b'\x12'+str(self.cli.public_key).encode())
