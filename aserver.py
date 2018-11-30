@@ -36,16 +36,17 @@ class Server:
                 if(Utils.verify_chain("IntermediateAuthority/certs/IntermediateAuthority.chain.pem",open('USER.cert.pem','rb').read())):
                     self.authenticated.append(c)
                     print("pridan frajer")
-            #preposilani
-            print(data)
-            for connection in self.authenticated:
-                if connection is not c:
-                    connection.send(data)
-            if not data:
-                self.connections.remove(c)
-                self.authenticated.remove(c)
-                c.close()
-                break
+            else:
+                #preposilani
+                print(data)
+                for connection in self.authenticated:
+                    if connection is not c:
+                        connection.send(data)
+                if not data:
+                    self.connections.remove(c)
+                    self.authenticated.remove(c)
+                    c.close()
+                    break
     def run(self):
         while True:
 

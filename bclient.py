@@ -67,6 +67,9 @@ class Client:
     def run(self):
         while True:
             data=self.sock.recv(BUFSIZE)
+            
+            
+            
             #misto na hrani si s daty
             if not data:
                 #ukonceni komunikace
@@ -90,6 +93,8 @@ class Client:
                 #vychozi stav- prijdou data bez ridiciho znaku-> predpokladame ze jsou zasifrovana AESem podle dohodnuteho hesla
                 data=self.mujAES.decrypt(data)
                 print(data.decode())
+    def vyzadatCert(self):
+        self.sock.send(b'\x15')
     def nastavitCert(self,data):
         #self.cert=OpenSSL.crypto.load_certificate_request(crypto.FILETYPE_PEM, data)
         self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_ASN1,data)
@@ -128,6 +133,10 @@ class Client:
         self.sock.send(b'\x11')
     def sendMessage(self):
         #hlavni chatova smycka
+        if os.path.isfile('IntermediateAuthority\\newcerts\\1000.cert.pem') == False:
+                self.vyzadatCert()
+        else:
+            self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,open('IntermediateAuthority\\newcerts\\1000.cert.pem').read())
         while True:
             msg=str(input(""))
             
