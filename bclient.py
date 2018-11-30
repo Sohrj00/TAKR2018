@@ -11,36 +11,8 @@ from Crypto import Random
 from Crypto.Cipher import AES
 from diffiehellman.diffiehellman import DiffieHellman
 from OpenCA import createCSR
-
-class Encryptor:
-    key=None
-    def __init__(self, key):
-        #klic musi byt v bytes
-        self.key = key.encode()
-    
-    def pad(self, s):
-        #doplni null byte(y) do pozadovane delky pro AES, musi dostat bytes
-        return s + b"\0" * (AES.block_size - len(s) % AES.block_size)
-
-    def encrypt(self, message, key_size=256):
-        #zasifruje zpravu vcetne paddingu, vraci inicializacni vektor + samotnou zasifrovanou zpravu
-        key=self.key
-        message = self.pad(message)
-        iv = Random.new().read(AES.block_size)
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        return iv + cipher.encrypt(message)
-
-   
-
-    def decrypt(self, ciphertext):
-        #desifruje zpravu a odstrani padding
-        key=self.key
-        iv = ciphertext[:AES.block_size]
-        cipher = AES.new(key, AES.MODE_CBC, iv)
-        plaintext = cipher.decrypt(ciphertext[AES.block_size:])
-        return plaintext.rstrip(b"\0")
-
-
+import Encryptor
+import time
 BUFSIZE=32768
 
 class Client:
@@ -49,12 +21,24 @@ class Client:
     cli=None
     def __init__(self,adress):
         self.sock.connect((adress, 9876))
-        
-        if os.path.isfile('private.pem') == False:
+        if os.path.isfile('User.private.pem') == False:
             createCSR('User','heslo',{'CN':'USER_FQDN'})
-        self.poslatCert()
+            self.poslatCertReq()
+            print("ZADAM SI CERTIFIKAT")
+        elif os.path.isfile('USER.cert.pem') == False:
+                #self.vyzadatCert()
+                self.poslatCertReq()
+                print("zadam o certifikat kvuli USER.cert.pem")
+        else:
+            print("NACITAM ZE SLOZKY JAK BOSSs")
+            self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,open('USER.cert.pem').read())
+            self.poslatCert()
+        
+        
+        
         self.cli=DiffieHellman()
         self.cli.generate_public_key()
+        #presunout do runu
         self.vyzadatKlic()
         
       
@@ -65,11 +49,9 @@ class Client:
 
 
     def run(self):
+        
         while True:
             data=self.sock.recv(BUFSIZE)
-            
-            
-            
             #misto na hrani si s daty
             if not data:
                 #ukonceni komunikace
@@ -84,6 +66,8 @@ class Client:
             elif data[0:1]==b"\x13":
                 #nezasifrovana komunikace
                 print(data.decode())
+                #vynuceni DH pokud prijde nezasifrovana zprava
+                #self.sock.send(b'\x11')
             elif data[0:1]==b"\x14":
                 #nastaveni klice v pripade ze byl vyzadan nebo tak neco
                 self.jinenastaveniklice(data[1:])
@@ -94,11 +78,14 @@ class Client:
                 data=self.mujAES.decrypt(data)
                 print(data.decode())
     def vyzadatCert(self):
-        self.sock.send(b'\x15')
+        self.sock.send(b'\x65')
     def nastavitCert(self,data):
         #self.cert=OpenSSL.crypto.load_certificate_request(crypto.FILETYPE_PEM, data)
         self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_ASN1,data)
     def poslatCert(self):
+        text=OpenSSL.crypto.dump_certificate(crypto.FILETYPE_PEM,self.cert)
+        self.sock.send(b'\x33'+text)
+    def poslatCertReq(self):
         #posle certifikat na podepsani
         cert = open('User.CSR.pem')
         certificate = OpenSSL.crypto.load_certificate_request(crypto.FILETYPE_PEM, open('User.CSR.pem').read())
@@ -117,7 +104,7 @@ class Client:
         xy=hashlib.sha256(superklic.encode()).hexdigest()[:32]
         print("2222222222222222222222222222")
         print(xy)
-        self.mujAES=Encryptor(xy)
+        self.mujAES=Encryptor.Encryptor(xy)
 
     def nastavitKlic(self,data):
         #nastavuje klic na zaklade dat ktere dostane
@@ -126,17 +113,14 @@ class Client:
         xy=hashlib.sha256(superklic.encode()).hexdigest()[:32]
         print("111111111111111111111")
         print(xy)
-        self.mujAES=Encryptor(xy)
+        self.mujAES=Encryptor.Encryptor(xy)
         self.sock.send(b'\x14'+str(self.cli.public_key).encode())
     def vyzadatKlic(self):
         #nemam klic ale chci, poslu ridici znak 
         self.sock.send(b'\x11')
     def sendMessage(self):
         #hlavni chatova smycka
-        if os.path.isfile('IntermediateAuthority\\newcerts\\1000.cert.pem') == False:
-                self.vyzadatCert()
-        else:
-            self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,open('IntermediateAuthority\\newcerts\\1000.cert.pem').read())
+        
         while True:
             msg=str(input(""))
             
