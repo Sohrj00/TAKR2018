@@ -1,0 +1,6 @@
+DH server, client hned pri pripojeni-posilani certu sifrovaneho jeste AESem
+vyzva na heslo- na zaklade toho autorizace,autentikace(heslo jako hash nejakeho
+..	 random slova ktere posleme jako vyzvu+opravdove heslo(prevence replay attacku)
+... 	 heslo zada uzivatel na zacatku programu
+klient pri pripojeni potom co projde cast s heslem posle serveru svoji cast DH kterou server posle dalsimu klientovi
+.. 	 co se pripoji aby nemusel rvat do prazdna+cert prvniho klienta na overeni ze je fakt ok? (mozna zbytecne)
