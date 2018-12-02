@@ -19,19 +19,18 @@ class Client:
     sock= socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     mujAES=None 
     cli=None
+    cislo=0
     def __init__(self,adress):
+        
         self.sock.connect((adress, 9876))
-        if os.path.isfile('User.private.pem') == False:
+        if os.path.isfile('User.private.pem') == False or os.path.isfile('client1.cert.pem') == False:
             createCSR('User','heslo',{'CN':'USER_FQDN'})
             self.poslatCertReq()
             print("ZADAM SI CERTIFIKAT")
-        elif os.path.isfile('USER.cert.pem') == False:
-                #self.vyzadatCert()
-                self.poslatCertReq()
-                print("zadam o certifikat kvuli USER.cert.pem")
+        
         else:
             print("NACITAM ZE SLOZKY JAK BOSSs")
-            self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,open('USER.cert.pem').read())
+            self.cert=OpenSSL.crypto.load_certificate(crypto.FILETYPE_PEM,open('client1.cert.pem').read())
             self.poslatCert()
         
         
@@ -64,6 +63,10 @@ class Client:
             elif data[0:1]==b"\x11":
                 #kdyz prijde ridici znak x11-posleme na vyzadani klic
                 self.poslatKlic()
+            elif data[0:1]==b"\x98":
+                createCSR('User','heslo',{'CN':'USER_FQDN'})
+                self.poslatCertReq()
+
             elif data[0:1]==b"\x12":
                 #kdyz prijde ridici znak x12 tak si nastavime klic ktery nasleduje po tomto bytu
                 self.nastavitKlic(data[1:])
@@ -81,7 +84,10 @@ class Client:
             else:
                 #vychozi stav- prijdou data bez ridiciho znaku-> predpokladame ze jsou zasifrovana AESem podle dohodnuteho hesla
                 data=self.mujAES.decrypt(data)
-                print(data.decode())
+                try:
+                    print("client "+str(self.cislo)+":"+data.decode())
+                except:
+                    continue
     def vyzadatCert(self):
         self.sock.send(b'\x65')
     def nastavitCert(self,data):
@@ -110,6 +116,7 @@ class Client:
         superklic=str(self.cli.shared_secret)
         xy=hashlib.sha256(superklic.encode()).hexdigest()[:32]
         print("2222222222222222222222222222")
+        self.cislo=2
         print(xy)
         self.mujAES=Encryptor.Encryptor(xy)
 
@@ -119,6 +126,7 @@ class Client:
         superklic=str(self.cli.shared_secret)
         xy=hashlib.sha256(superklic.encode()).hexdigest()[:32]
         print("111111111111111111111")
+        self.cislo=1
         print(xy)
         self.mujAES=Encryptor.Encryptor(xy)
         self.sock.send(b'\x14'+str(self.cli.public_key).encode())
